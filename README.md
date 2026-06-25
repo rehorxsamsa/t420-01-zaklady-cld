@@ -22,7 +22,7 @@ curl -fsSL https://claude.ai/install.sh | sh
 claude --version
 ```
 
-> 💡 **Tvůj setup (WSL2/Ubuntu):** Doporučuju variantu A nebo B přímo ve WSL, ne ve Windows. Claude Code pak vidí tvůj linuxový filesystém `~/projekty/` nativně.
+> 💡 **Tvůj setup (Pokud používáš WSL2/Ubuntu):** Doporučuju variantu A nebo B přímo ve WSL, ne ve Windows. Claude Code pak vidí tvůj linuxový filesystém `~/projekty/` nativně.
 
 ### `claude update`
 
@@ -39,7 +39,7 @@ Claude Code vychází **prakticky každý týden**, takže `claude update` pouš
 Než pustíme Claude Code, rozběhneme codebase, na které budeme pracovat:
 
 ```bash
-cd dil-01-zaklady/task-library
+cd t420-01-zaklady-cld/task-library
 docker compose up --build
 ```
 
@@ -67,7 +67,7 @@ task-library/
 Spusť Claude Code **v adresáři projektu**:
 
 ```bash
-cd dil-01-zaklady/task-library
+cd t420-01-zaklady-cld/task-library
 claude
 ```
 
