@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: task-library-app
+    container_name: task-library-app-t420-01
     # data/ se vytváří až po připojení bind mountu (ten překryje to z Dockerfilu),
     # jinak SQLite nemá kam zapsat tasks.sqlite → PDO spadne na "unable to open database file"
     command: sh -c "mkdir -p data && chown -R www-data:www-data data && php-fpm"
@@ -16,7 +16,7 @@ services:
 
   web:
     image: nginx:1.27-alpine
-    container_name: task-library-web
+    container_name: task-library-web-t420-01
     ports:
       - "8080:80"
     volumes:

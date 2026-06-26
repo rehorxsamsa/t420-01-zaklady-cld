@@ -253,4 +253,4 @@ Použiješ `/clear`. Stará historie (databáze) by jen plnila kontextové okno 
 `Esc` (Interrupt Claude). Session žije dál, jen upřesníš zadání. (`Esc` `Esc` tě navíc pustí do historie promptů.)
 </details>
 
-→ Pokračuj na [Díl 02 — Slash příkazy a vlastní příkazy](../dil-02-slash-prikazy/README.md)
+→ Pokračuj na [Díl 02 — Slash příkazy a vlastní příkazy](../t420-02-slash-prikazy-cld/README.md)
