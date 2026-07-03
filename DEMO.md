@@ -73,6 +73,8 @@ Spusť Claude v terminálu:
 claude
 ```
 
+> ℹ️ Claude spouštíš **z adresáře `task-library/`** (viz sekce 0). Proto všechny cesty v promptech níže (`@src/...`, `templates/...`) jsou relativní k němu.
+
 Řekni: „Teď mu nedám žádný příkaz. Napíšu mu **česky větu**, jako bych psal kolegovi." A napiš:
 
 ```
@@ -125,6 +127,8 @@ Tady se láme chleba — divák uvidí, že to není jen chytré vyhledávání,
 6. Až doběhne, **přepni do prohlížeče a dej refresh (F5)**. Ukaž novou funkci naživo.
 
 > 🎯 Pointa: „Řekl jsem mu česky větu → on rozmyslel plán → počkal na moje ‚ano' → změnil pět souborů → funguje to v prohlížeči. To celé za dvě minuty."
+
+> ⚠️ **Pozor na kolizi s README.** Stejný příklad (přidání pole „priority") používá i `README.md` v sekci Plan mode. Pokud prezentuješ obojí, nespouštěj demo z už změněného stavu — mezi ukázkami vrať projekt zpět: `git checkout -- task-library/` (příp. zvol jiné vylepšení, třeba „přidej k úkolům datum splnění a zvýrazni úkoly po termínu").
 
 **Pokud se výsledek nepovede na první dobrou** (může se stát — je to živě): neber to jako průšvih, **udělej z toho ukázku**. Napiš mu „Nefunguje mi to takhle: [popiš] — oprav to." a nech ho opravit. Divák uvidí, že se s tím **normálně konverzuje**, jako s kolegou. To je věrohodnější než dokonalé demo.
 
