@@ -44,12 +44,12 @@ Vše se pouští z `task-library/`:
 docker compose up --build        # nastartuje app (PHP-FPM) + web (nginx) → http://localhost:8080
 docker compose down
 
-# Lint všech PHP souborů (přeskoč generovanou DB)
-find . -name "*.php" -not -path "./data/*" -exec php -l {} \;
-php -l src/Service/TaskService.php   # lint jednoho souboru
+# Lint všech PHP souborů (běží v kontejneru; přeskoč generovanou DB)
+docker compose exec -T app find . -name "*.php" -not -path "./data/*" -exec php -l {} \;
+docker compose exec -T app php -l src/Service/TaskService.php   # lint jednoho souboru
 ```
 
-> PHP je jen v Dockeru (na hostiteli není). `php` příkazy pouštěj přes `docker exec` v kontejneru projektu.
+> PHP je jen v Dockeru (na hostiteli není) — `php` proto pouštěj v kontejneru přes `docker compose exec app …` (jako v příkladech výše). `-T` vypne alokaci TTY, aby příkaz fungoval i neinteraktivně.
 
 ### Testy
 

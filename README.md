@@ -127,14 +127,16 @@ Můžeš odkázat i víc věcí naráz:
 ```
 
 ```
-> !find task-library -name "*.php" -not -path "*/data/*" -exec php -l {} \;
+> !cd task-library && docker compose exec -T app find . -name "*.php" -not -path "./data/*" -exec php -l {} \;
 ```
 
 Tohle je super pro rychlé ověření stavu, aniž bys opouštěl session. Praktický příklad na naší aplikaci — ověř, že kód prošel lintem:
 
 ```
-> !php -l task-library/src/Service/TaskService.php
+> !cd task-library && docker compose exec -T app php -l src/Service/TaskService.php
 ```
+
+> ℹ️ PHP tu běží **jen v kontejneru**, ne na hostiteli — proto `docker compose exec app`. `-T` vypne TTY, aby příkaz fungoval i v bash módu. (Container má pracovní adresář `/var/www/html`, takže cesty uvnitř píšeš relativně od kořene aplikace — `src/...`.)
 
 ---
 
