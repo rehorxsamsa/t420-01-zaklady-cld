@@ -46,6 +46,12 @@ final class TaskController
         $this->redirect('/');
     }
 
+    public function audit(): void
+    {
+        $entries = $this->service->auditEntries();
+        $this->render('audit', ['entries' => $entries]);
+    }
+
     /**
      * @param array<string, mixed> $data
      */

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Model\AuditEntry;
 use App\Model\Task;
+use App\Repository\AuditLogRepository;
 use App\Repository\TaskRepository;
 
 /**
@@ -14,6 +16,7 @@ final class TaskService
 {
     public function __construct(
         private readonly TaskRepository $repository = new TaskRepository(),
+        private readonly AuditLogRepository $auditLog = new AuditLogRepository(),
     ) {
     }
 
@@ -32,17 +35,54 @@ final class TaskService
             throw new \InvalidArgumentException('Název úkolu nesmí být prázdný');
         }
 
-        return $this->repository->create($title);
+        $task = $this->repository->create($title);
+        $this->auditLog->append(
+            'task.created',
+            $task->id,
+            sprintf('Úkol „%s" vytvořen', $task->title),
+        );
+
+        return $task;
     }
 
     public function toggle(int $id): void
     {
+        $task = $this->repository->find($id);
         $this->repository->toggle($id);
+
+        if ($task !== null) {
+            $this->auditLog->append(
+                $task->done ? 'task.reopened' : 'task.completed',
+                $id,
+                sprintf(
+                    'Úkol „%s" označen jako %s',
+                    $task->title,
+                    $task->done ? 'nehotový' : 'hotový',
+                ),
+            );
+        }
     }
 
     public function remove(int $id): void
     {
+        $task = $this->repository->find($id);
         $this->repository->delete($id);
+
+        if ($task !== null) {
+            $this->auditLog->append(
+                'task.deleted',
+                $id,
+                sprintf('Úkol „%s" smazán', $task->title),
+            );
+        }
+    }
+
+    /**
+     * @return list<AuditEntry>
+     */
+    public function auditEntries(): array
+    {
+        return $this->auditLog->all();
     }
 
     /**

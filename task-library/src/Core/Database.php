@@ -44,6 +44,16 @@ final class Database
             )'
         );
 
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                task_id INTEGER,
+                detail TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )'
+        );
+
         $count = (int) $pdo->query('SELECT COUNT(*) FROM tasks')->fetchColumn();
         if ($count === 0) {
             $stmt = $pdo->prepare(

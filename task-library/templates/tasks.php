@@ -14,7 +14,10 @@
 </head>
 <body class="bg-light">
 <div class="container py-5" style="max-width: 720px;">
-    <h1 class="mb-4">📚 Knihovna úkolů</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">📚 Knihovna úkolů</h1>
+        <a href="/audit" class="btn btn-outline-secondary btn-sm">📜 Audit log</a>
+    </div>
 
     <div class="mb-4">
         <div class="d-flex justify-content-between mb-1">
