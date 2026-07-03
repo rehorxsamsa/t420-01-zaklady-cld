@@ -200,6 +200,24 @@ V dílu 02 půjdeme na slash příkazy do hloubky a napíšeme si vlastní pří
 
 ---
 
+## 🤓 7 zajímavostí o tomto projektu
+
+1. **Žádný Composer, žádný framework — a je to schválně.** Celá „infrastruktura" (autoloader, router, správa DB) má dohromady pár desítek řádků vlastního kódu. Uvidíš tak, co za tebe frameworky normálně dělají — a že PSR-4 autoloader je ve skutečnosti jedna funkce v `autoload.php`.
+
+2. **Databáze se vytvoří sama.** Soubor `data/tasks.sqlite` v repu nenajdeš — vznikne při úplně prvním requestu. `Database::connection()` je singleton, který si při prvním zavolání vytvoří schéma a naseeduje 3 ukázkové úkoly. Smažeš-li DB, appka si ji při dalším načtení stránky postaví znovu.
+
+3. **DI „chudého muže".** Žádný dependency injection kontejner — každá vrstva má svou závislost jako default hodnotu v konstruktoru (`TaskService $service = new TaskService()`). V produkci se řetěz Controller → Service → Repository složí sám, v testech závislost prostě předáš ručně.
+
+4. **Router umí jediný parametr: `{id}`.** Zápis `{id}` v cestě se překládá na regex `(?P<id>\d+)` — nic víc. Žádné wildcardy, žádné anotace; všechny routy jsou vypsané jako tabulka v `public/index.php`. Schválně minimalistické, ať je celý routing pochopitelný na jedno přečtení.
+
+5. **Šablony jsou `extract()` + `require`.** Žádný Twig ani Blade — `TaskController::render()` rozbalí pole dat do lokálních proměnných a inkluduje obyčejný PHP soubor. Přesně takhle fungovaly šablonovací enginy pod kapotou, než dostaly vlastní syntaxi.
+
+6. **Audit log je append-only.** `AuditLogRepository` má jen `append()` a `all()` — update ani delete neexistují, protože auditní stopa, do které se dá zpětně sahat, ztrácí důvěryhodnost. A `task_id` je schválně bez cizího klíče, aby záznam přežil i smazání úkolu, o kterém vypovídá.
+
+7. **Dva kontejnery na jednu mini aplikaci.** nginx a PHP-FPM běží odděleně a baví se spolu přes FastCGI — stejné uspořádání jako na produkčních serverech, jen v malém. Díky bind-mountu se změny v kódu projeví hned, bez rebuildu image.
+
+---
+
 ## ✅ Test dílu 01
 
 Odpovědi jsou schované pod otázkami — nejdřív si odpověz sám.
