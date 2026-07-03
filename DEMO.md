@@ -213,6 +213,6 @@ Pak nabídni další krok podle publika:
 ## Bleskový scénář na 5 minut (když máš málo času)
 
 1. Ukaž appku v prohlížeči (30 s).
-2. `claude` → „Vysvětli mi jednoduše, co je tohle za aplikaci." (90 s).
+2. `cd t420-01-zaklady-cld && claude` → „Vysvětli mi jednoduše, co je tohle za aplikaci." (90 s).
 3. Plan mode → „Přidej úkolům prioritu s červeným štítkem u vysokých." → schval → refresh v prohlížeči (2,5 min).
 4. Věta na závěr: „Napsal jsem česky větu, on rozmyslel plán, počkal na moje ano, změnil kód — a funguje to." (30 s).
