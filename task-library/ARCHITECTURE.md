@@ -65,6 +65,7 @@ $router->add('GET',  '/',                    fn ()        => $controller->index(
 $router->add('POST', '/tasks',               fn ()        => $controller->store());
 $router->add('POST', '/tasks/{id}/toggle',   fn (?int $id) => $controller->toggle((int) $id));
 $router->add('POST', '/tasks/{id}/delete',   fn (?int $id) => $controller->destroy((int) $id));
+$router->add('GET',  '/audit',               fn ()        => $controller->audit());
 ```
 
 `Router` umí jen **literální cesty a jeden parametr `{id}`** (převede `{id}` na regex `(?P<id>\d+)`). Žádné jiné parametry, žádné wildcardy. **Novou cestu přidáváš do `index.php`**, ne k controlleru.
@@ -84,6 +85,18 @@ Schéma tabulky `tasks`:
 | `done` | INTEGER NOT NULL DEFAULT 0 | 0/1, v PHP se mapuje na `bool` |
 | `created_at` | TEXT NOT NULL | ISO 8601 (`date('c')`) |
 
+Schéma tabulky `audit_log` (auditní stopa změn — kdo/kdy/co; zapisuje ji `TaskService` přes `AuditLogRepository`, log je **append-only**, záznamy se nikdy neupravují ani nemažou):
+
+| sloupec | typ | poznámka |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `action` | TEXT NOT NULL | strojový klíč akce (`task.created`, `task.completed`, `task.reopened`, `task.deleted`) |
+| `task_id` | INTEGER | ID dotčeného úkolu (bez FK — záznam přežije smazání úkolu) |
+| `detail` | TEXT NOT NULL | lidsky čitelný český popis |
+| `created_at` | TEXT NOT NULL | ISO 8601 (`date('c')`) |
+
+Log se zobrazuje na `GET /audit` (`templates/audit.php`).
+
 DB soubor je generovaný za běhu, **gitignorovaný** a v Dockeru musí být zapisovatelný pro uživatele `www-data` (uid 82).
 
 ### DI „chudého muže"
@@ -100,7 +113,7 @@ final class TaskController {
 V produkci se tak řetěz složí sám (`new TaskController()` → `new TaskService()` → `new TaskRepository()`). Pro **testy** lze závislost předat ručně (např. `new TaskService($fakeRepository)`), takže vrstvy zůstávají testovatelné i bez kontejneru.
 
 ### Šablony jsou prosté PHP
-Žádný šablonovací engine. `TaskController::render()` udělá `extract($data)` a `require templates/<jméno>.php`. Proměnné předané v poli `$data` jsou tak v šabloně dostupné jako lokální proměnné. Jediná šablona je `templates/tasks.php`.
+Žádný šablonovací engine. `TaskController::render()` udělá `extract($data)` a `require templates/<jméno>.php`. Proměnné předané v poli `$data` jsou tak v šabloně dostupné jako lokální proměnné. Šablony jsou dvě: `templates/tasks.php` (seznam úkolů) a `templates/audit.php` (audit log).
 
 ### Ruční PSR-4 autoloader
 `autoload.php` registruje `spl_autoload_register`, který mapuje namespace prefix `App\` na adresář `src/`:
