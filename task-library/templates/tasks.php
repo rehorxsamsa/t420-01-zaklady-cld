@@ -14,6 +14,7 @@
 </head>
 <body class="bg-light">
 <div class="container py-5" style="max-width: 720px;">
+    <div class="text-muted small mb-1">t420-01-zaklady-cld</div>
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">📚 Knihovna úkolů</h1>
         <a href="/audit" class="btn btn-outline-secondary btn-sm">📜 Audit log</a>
