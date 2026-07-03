@@ -19,7 +19,7 @@ Checklist připravenosti:
 
 - [ ] V prohlížeči otevřená a funkční stránka **http://localhost:8080** (vidíš „Knihovnu úkolů", progress bar, seznam).
 - [ ] Vyzkoušej ručně přidat a odškrtnout úkol — ať víš, že appka žije.
-- [ ] Otevřený **terminál** v adresáři `task-library/`, dost velké písmo (Ctrl/Cmd + `+`), tmavé pozadí.
+- [ ] Otevřený **terminál v kořeni dílu `t420-01-zaklady-cld/`** (odtud budeš spouštět `claude`), dost velké písmo (Ctrl/Cmd + `+`), tmavé pozadí. Aplikace přitom běží z předchozího kroku (`docker compose` v `task-library/`) — klidně v jiném okně/záložce.
 - [ ] Claude Code **nainstalovaný a přihlášený** (`claude --version` projde). Přihlašování nikdy nedělej živě.
 - [ ] `git status` je čistý (kdyby divák chtěl vidět „jak se to vrátí zpět").
 - [ ] Zavři si notifikace, Slack, e-mail. Sdílíš obrazovku.
@@ -67,13 +67,14 @@ Jedna věta o tom, co je „pod kapotou", ale bez detailů:
 
 Tohle je nejlepší úvodní „wow" — je neohrozitelné (nic nemění) a ukazuje hlavní hodnotu.
 
-Spusť Claude v terminálu:
+Spusť Claude v terminálu **v kořeni dílu** (ne v `task-library/`):
 
 ```bash
+cd t420-01-zaklady-cld
 claude
 ```
 
-> ℹ️ Claude spouštíš **z adresáře `task-library/`** (viz sekce 0). Proto všechny cesty v promptech níže (`@src/...`, `templates/...`) jsou relativní k němu.
+> ℹ️ Claude spouštíš z **kořene dílu `t420-01-zaklady-cld/`** (viz sekce 0). Proto jsou cesty v promptech níže relativní ke kořeni — tj. `@task-library/src/...`.
 
 Řekni: „Teď mu nedám žádný příkaz. Napíšu mu **česky větu**, jako bych psal kolegovi." A napiš:
 
@@ -97,7 +98,7 @@ Až doběhne, přečti nahlas 2–3 věty z jeho odpovědi. Pak pointa:
 Ukaž, že mu můžeš cíleně říct, na co se má koukat — pomocí `@`.
 
 ```
-Vysvětli mi jednoduše, co dělá @src/Service/TaskService.php
+Vysvětli mi jednoduše, co dělá @task-library/src/Service/TaskService.php
 ```
 
 Řekni: „Ten zavináč je jako **přetáhnout soubor do chatu**. Říkám mu ‚koukni přesně sem'." Když se objeví nabídka souborů při psaní `@`, ukaž, že si vybírá ze skutečných souborů projektu.
@@ -138,7 +139,7 @@ Tady se láme chleba — divák uvidí, že to není jen chytré vyhledávání,
 
 Silná pointa pro netechnické publikum: AI umí **najít a spravit chybu**.
 
-1. Předem (nebo živě, pokud si věříš) rozbij šablonu — třeba v `templates/tasks.php` smaž jeden `</div>`.
+1. Předem (nebo živě, pokud si věříš) rozbij šablonu — třeba v `task-library/templates/tasks.php` smaž jeden `</div>`.
 2. Ukaž rozbitou stránku v prohlížeči.
 3. **Vyfoť ji / udělej screenshot** a vlož do Claude přes `Ctrl+V`:
 
