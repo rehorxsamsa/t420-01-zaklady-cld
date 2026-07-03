@@ -256,7 +256,7 @@ Claude soubor načte přes nástroj (lepší tokenizace), cesta se objeví v aud
 
 <details><summary>Odpověď</summary>
 
-Je to **bash mode prefix** — Claude Code zbytek řádku spustí jako shell příkaz (po schválení) a ukáže ti výstup, aniž bys opustil session. Např. `!docker compose ps`.
+Je to **bash mode prefix** — Claude Code zbytek řádku spustí jako shell příkaz (po schválení) a ukáže ti výstup, aniž bys opustil session. Např. `!cd task-library && docker compose ps`.
 </details>
 
 **6. Pracoval jsi 20 minut na databázové vrstvě a teď chceš řešit CSS. Co uděláš s kontextem a proč?**
