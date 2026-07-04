@@ -43,7 +43,7 @@ cd t420-01-zaklady-cld/task-library
 docker compose up --build
 ```
 
-Otevři http://localhost:8080 — uvidíš „Knihovnu úkolů" s progress barem a seznamem úkolů. Funguje přidávání, odškrtávání i mazání.
+Otevři http://localhost:8080 — uvidíš „Seznam úkolů" s progress barem a seznamem úkolů. Funguje přidávání, odškrtávání i mazání.
 
 Architektura (ať víš, co Claude uvidí):
 ```

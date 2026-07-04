@@ -17,7 +17,7 @@ docker compose up --build        # počkej, až naběhne
 
 Checklist připravenosti:
 
-- [ ] V prohlížeči otevřená a funkční stránka **http://localhost:8080** (vidíš „Knihovnu úkolů", progress bar, seznam).
+- [ ] V prohlížeči otevřená a funkční stránka **http://localhost:8080** (vidíš „Seznam úkolů", progress bar, seznam).
 - [ ] Vyzkoušej ručně přidat a odškrtnout úkol — ať víš, že appka žije.
 - [ ] Otevřený **terminál v kořeni dílu `t420-01-zaklady-cld/`** (odtud budeš spouštět `claude`), dost velké písmo (Ctrl/Cmd + `+`), tmavé pozadí. Aplikace přitom běží z předchozího kroku (`docker compose` v `task-library/`) — klidně v jiném okně/záložce.
 - [ ] Claude Code **nainstalovaný a přihlášený** (`claude --version` projde). Přihlašování nikdy nedělej živě.
