@@ -9,6 +9,7 @@ Díl 01 výukové série o Claude Code („Základy"). Dvě části:
 - **`README.md`** — vlastní text dílu (instalace, první session, `/init`, `@` mentions, bash mód `!`, Plan vs. yolo mode, `/clear`). Když upravuješ obsah tutoriálu, edituješ tenhle soubor; je psaný česky a obsahuje na konci sekci „Test dílu 01" s odpověďmi v `<details>`.
 - **`DEMO.md`** — scénář živé prezentace Claude Code pro netechnické publikum (kdo nezná AI ani Claude), demonstrovaný na aplikaci `task-library/`.
 - **`task-library/`** — spustitelná pískoviště aplikace, na které tutoriál demonstruje příkazy. Její architektura a konvence jsou popsané níže.
+- **`ARCHITECTURE.md`** — podrobný popis architektury aplikace `task-library/` (v kořeni dílu).
 
 README na aplikaci přímo odkazuje (cesty k souborům, příklady promptů). Když přejmenuješ nebo přesuneš soubor v `task-library/`, zkontroluj, jestli na něj README nereferuje. Totéž platí pro `DEMO.md`.
 
