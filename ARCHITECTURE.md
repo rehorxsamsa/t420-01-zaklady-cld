@@ -1,155 +1,126 @@
 # Architektura — Task Library
 
-Malá aplikace na správu úkolů (TODO list) napsaná v čistém **PHP 8.3 OOP**, bez frameworku a bez Composeru. Slouží jako pískoviště pro tutoriál Claude Code. Cílem je ukázat poctivé vrstvení a OOP idiomy na co nejmenším množství kódu.
+Referenční mini-aplikace (TODO list) v čistém **PHP 8.3 OOP** — bez frameworku, bez Composeru, bez šablonovacího enginu. Záměrně minimální plocha kódu s poctivým vrstvením; slouží jako pískoviště pro tutoriál Claude Code. Cílem tohoto dokumentu není opakovat, co je z kódu zřejmé, ale zachytit **invarianty, kompromisy a neintuitivní chování**, která z jednoho souboru nevyčteš.
 
 ## Stack
 
-- **PHP 8.3** — čisté OOP, žádný framework, žádný Composer
-- **SQLite** přes PDO — souborová DB, vzniká za běhu
-- **Bootstrap 5** přes CDN — vzhled, žádný build krok pro frontend
-- **Docker** — nginx (reverzní proxy / static) + PHP-FPM (běh PHP)
+- **PHP 8.3**, `declare(strict_types=1)` všude, třídy `final`, `readonly` kde dává smysl.
+- **SQLite / PDO** — souborová DB (`data/tasks.sqlite`), vzniká a migruje se za běhu.
+- **Bootstrap 5 přes CDN** — žádný frontend build.
+- **Docker** — nginx (:8080) jako edge, PHP-FPM (:9000, jen `expose`) jako backend přes FastCGI.
 
-## Tok requestu
+## Request flow
 
-Logika aplikace je rozprostřená přes několik vrstev — chování nepochopíš z jednoho souboru. Každý HTTP request projde tímhle řetězcem:
+Klasické vrstvené MVC-ish uspořádání, ruční drátování. Řetěz na jeden request:
 
 ```
-prohlížeč
-   │  HTTP :8080
-   ▼
-nginx (web)                      docker/nginx/default.conf
-   │  FastCGI :9000
-   ▼
-public/index.php                 front controller + tabulka rout
-   │
-   ▼
-Router                           src/Core/Router.php
-   │  match (metoda + cesta) → callable
-   ▼
-TaskController                   src/Controller/TaskController.php
-   │  orchestrace requestu, render šablony / redirect
-   ▼
-TaskService                      src/Service/TaskService.php
-   │  business logika, validace
-   ▼
-TaskRepository                   src/Repository/TaskRepository.php
-   │  jediné místo se SQL
-   ▼
-Database (PDO/SQLite)            src/Core/Database.php
-                                 singleton + auto-migrace + seed
+prohlížeč ──:8080──▶ nginx ──FastCGI :9000──▶ public/index.php ──▶ Router ──▶ TaskController ──▶ TaskService ──▶ TaskRepository ──▶ Database (PDO/SQLite)
+                     (docker/nginx/            (front controller   (Core/       (Controller/       (Service/        (Repository/       (Core/Database.php
+                      default.conf)             + routovací tabulka) Router.php)  TaskController.php) TaskService.php) TaskRepository.php) singleton+migrace+seed)
 ```
 
-Datový objekt putující skrz vrstvy je **`Task`** (`src/Model/Task.php`) — neměnná-ish doménová entita s tovární metodou `fromRow()`, která mapuje řádek z DB na typovaný objekt.
+Napříč vrstvami putují dvě doménové entity: **`Task`** (`src/Model/Task.php`) a **`AuditEntry`** (`src/Model/AuditEntry.php`), obě s factory `fromRow()` mapující DB řádek na typovaný objekt.
 
-## Vrstvy a jejich zodpovědnosti
+## Vrstvy a invarianty
 
-| Vrstva | Soubor | Smí | Nesmí |
+| Vrstva | Soubor | Odpovědnost | Tvrdá hranice |
 |---|---|---|---|
-| **Front controller** | `public/index.php` | registrovat routy, spustit dispatch | obsahovat business logiku |
-| **Router** | `src/Core/Router.php` | mapovat (metoda+cesta) na callable | znát doménu úkolů |
-| **Controller** | `src/Controller/TaskController.php` | číst `$_POST`, volat Service, render/redirect | sahat na Repository nebo DB přímo |
-| **Service** | `src/Service/TaskService.php` | business logika, validace | psát SQL |
-| **Repository** | `src/Repository/TaskRepository.php` | SQL přes PDO | obsahovat business pravidla |
-| **Model** | `src/Model/Task.php` | držet data úkolu | sahat na DB |
-| **Database** | `src/Core/Database.php` | připojení, migrace, seed | znát doménu nad rámec schématu |
+| Front controller | `public/index.php` | registrace rout, dispatch | žádná doménová logika |
+| Router | `src/Core/Router.php` | (metoda+cesta) → callable | nezná doménu |
+| Controller | `src/Controller/TaskController.php` | čtení `$_POST`, volání Service, render/redirect | **nikdy** Repository ani PDO přímo |
+| Service | `src/Service/TaskService.php` | business logika, validace, orchestrace auditu | žádné SQL |
+| Repository | `src/Repository/*Repository.php` | veškeré SQL přes PDO | žádná business pravidla |
+| Model | `src/Model/{Task,AuditEntry}.php` | držet data | nesahá na DB |
+| Database | `src/Core/Database.php` | connection, migrace, seed | nezná doménu nad rámec schématu |
 
-**Pravidlo vrstvení (nesmí se porušit):** Controller jde vždy přes Service, nikdy přímo na Repository ani na PDO. SQL existuje výhradně v Repository. Business logika (např. validace prázdného názvu, výpočet `progress()`) patří do Service, ne do Controlleru.
+**Klíčový invariant:** Controller → Service → Repository, jednosměrně. SQL žije výhradně v Repository, business logika (validace, `progress()`, volba auditní akce) výhradně v Service. Porušení téhle hranice je to, co tutoriál v pozdějším dílu chytá přes `/review`.
 
-## Klíčové mechanismy (které nejsou vidět z jednoho souboru)
+## Netriviální rozhodnutí a gotchas
 
-### Routing je tabulka v `public/index.php`
-Routy se neregistrují anotacemi ani konfigem, ale imperativně:
+### Router: substituce, ne matcher
+`dispatch()` lineárně projede routy, `{id}` nahradí za `(?P<id>\d+)` a matchne celou cestu. Důsledky, které stojí za vědomí:
 
-```php
-$router->add('GET',  '/',                    fn ()        => $controller->index());
-$router->add('POST', '/tasks',               fn ()        => $controller->store());
-$router->add('POST', '/tasks/{id}/toggle',   fn (?int $id) => $controller->toggle((int) $id));
-$router->add('POST', '/tasks/{id}/delete',   fn (?int $id) => $controller->destroy((int) $id));
-$router->add('GET',  '/audit',               fn ()        => $controller->audit());
-```
+- **Jediný podporovaný parametr je `{id}`** (číselný). Žádné wildcardy, žádné volitelné segmenty, žádné query-param routování.
+- **Neexistuje 405** — neshoda metody spadne do stejné větve jako neznámá cesta a vrátí holé `404`. Route table se registruje v `index.php`, ne u controlleru.
+- Handler dostává `?int $id` (null pro bezparametrické routy); přetypování na `int` řeší lambda v `index.php`.
 
-`Router` umí jen **literální cesty a jeden parametr `{id}`** (převede `{id}` na regex `(?P<id>\d+)`). Žádné jiné parametry, žádné wildcardy. **Novou cestu přidáváš do `index.php`**, ne k controlleru.
+### Database: procesní singleton s idempotentní migrací
+`Database::connection()` je `static ?PDO` cachovaný **v rámci PHP-FPM workeru** (ne globálně napříč procesy). Nastavuje `ERRMODE_EXCEPTION` a `FETCH_ASSOC`. Při prvním volání v procesu spustí `migrate()`:
 
-### Database je singleton s auto-migrací a seedem
-`Database::connection()` vrací jedinou sdílenou instanci PDO. Při **prvním** volání:
-1. otevře (a v případě potřeby vytvoří) soubor `data/tasks.sqlite`,
-2. spustí `migrate()` → `CREATE TABLE IF NOT EXISTS tasks (...)`,
-3. pokud je tabulka prázdná, naseeduje 3 ukázkové úkoly.
+1. `CREATE TABLE IF NOT EXISTS` pro `tasks` i `audit_log` (idempotentní, běží na každém cold connectu — levné).
+2. Seed 3 úkolů **jen když je `tasks` prázdná**.
 
-Schéma tabulky `tasks`:
+Migrace je „schema-on-boot" bez verzování — jakákoli změna sloupce vyžaduje ruční zásah do existující DB, `IF NOT EXISTS` migraci sloupců neřeší.
 
-| sloupec | typ | poznámka |
+Schéma `tasks`:
+
+| sloupec | typ | pozn. |
 |---|---|---|
 | `id` | INTEGER PK AUTOINCREMENT | |
-| `title` | TEXT NOT NULL | název úkolu |
-| `done` | INTEGER NOT NULL DEFAULT 0 | 0/1, v PHP se mapuje na `bool` |
+| `title` | TEXT NOT NULL | |
+| `done` | INTEGER NOT NULL DEFAULT 0 | 0/1 → v PHP `bool` |
 | `created_at` | TEXT NOT NULL | ISO 8601 (`date('c')`) |
 
-Schéma tabulky `audit_log` (auditní stopa změn — kdo/kdy/co; zapisuje ji `TaskService` přes `AuditLogRepository`, log je **append-only**, záznamy se nikdy neupravují ani nemažou):
+Schéma `audit_log` — **append-only** stopa, zapisuje `TaskService` přes `AuditLogRepository`, záznamy se nikdy neupravují ani nemažou:
 
-| sloupec | typ | poznámka |
+| sloupec | typ | pozn. |
 |---|---|---|
 | `id` | INTEGER PK AUTOINCREMENT | |
-| `action` | TEXT NOT NULL | strojový klíč akce (`task.created`, `task.completed`, `task.reopened`, `task.deleted`) |
-| `task_id` | INTEGER | ID dotčeného úkolu (bez FK — záznam přežije smazání úkolu) |
+| `action` | TEXT NOT NULL | strojový klíč (`task.created`/`task.completed`/`task.reopened`/`task.deleted`) |
+| `task_id` | INTEGER (nullable) | **bez FK** — záznam vědomě přežije smazání úkolu |
 | `detail` | TEXT NOT NULL | lidsky čitelný český popis |
-| `created_at` | TEXT NOT NULL | ISO 8601 (`date('c')`) |
+| `created_at` | TEXT NOT NULL | ISO 8601 |
 
-Log se zobrazuje na `GET /audit` (`templates/audit.php`).
+Log se čte na `GET /audit` (`templates/audit.php`).
 
-DB soubor je generovaný za běhu, **gitignorovaný** a v Dockeru musí být zapisovatelný pro uživatele `www-data` (uid 82).
+### Audit a atomicita — čtený stav
+`TaskService::toggle()`/`remove()` nejdřív `find()` úkol (kvůli titulku a stavu pro audit), pak provedou write, pak zapíšou audit. Dvě vědomá omezení pro sandbox:
+
+- **Write úkolu a zápis auditu nejsou v jedné transakci** — teoreticky můžou rozejít.
+- **Auditní label u `toggle` se odvozuje z pre-write stavu** (`$task->done` přečteného před UPDATE). Samotný UPDATE je atomický (`done = 1 - done`), ale mezi read a write není zámek — pod konkurencí se label může rozejít se skutečností. Pro jednouživatelské pískoviště irelevantní, u produkce by šlo o TOCTOU.
+
+Žádná CSRF ochrana na POST formulářích — mimo scope výukové aplikace.
+
+### Model: „neměnný-ish"
+`Task` má `readonly` jen `id` a `createdAt`; `title` a `done` jsou mutable. Není to plnohodnotná value object neměnnost — je to úmyslný kompromis (řádek jde načíst, upravit v paměti, ale identita a čas vzniku jsou fixní).
 
 ### DI „chudého muže"
-Závislosti neskládá žádný kontejner. Každá vyšší vrstva má svou závislost jako **default v konstruktoru**:
+Žádný kontejner. Závislosti jsou **defaulty v konstruktoru** (`TaskController(TaskService $s = new TaskService())`, dtto Service → dvě repository). V provozu se řetěz složí sám z `new TaskController()`; pro testy se závislost injektne ručně (`new TaskService($fakeRepo, $fakeAudit)`), takže vrstvy zůstávají testovatelné i bez kontejneru. Default `new` v signatuře se vyhodnocuje per-instance, ne staticky.
 
-```php
-final class TaskController {
-    public function __construct(
-        private readonly TaskService $service = new TaskService(),
-    ) {}
-}
-```
+### Repository detaily
+- `create()` po INSERT dělá `lastInsertId()` + re-`find()` (extra round-trip, ale vrací plně hydratovaný `Task` s `created_at`); fallback `?? throw`.
+- `all()` řadí `ORDER BY id DESC` (nejnovější první) a mapuje přes `Task::fromRow()`.
+- Všechny mutace přes prepared statements s pojmenovanými parametry.
 
-V produkci se tak řetěz složí sám (`new TaskController()` → `new TaskService()` → `new TaskRepository()`). Pro **testy** lze závislost předat ručně (např. `new TaskService($fakeRepository)`), takže vrstvy zůstávají testovatelné i bez kontejneru.
-
-### Šablony jsou prosté PHP
-Žádný šablonovací engine. `TaskController::render()` udělá `extract($data)` a `require templates/<jméno>.php`. Proměnné předané v poli `$data` jsou tak v šabloně dostupné jako lokální proměnné. Šablony jsou dvě: `templates/tasks.php` (seznam úkolů) a `templates/audit.php` (audit log).
+### Šablony = prosté PHP
+`TaskController::render()` udělá `extract($data)` a `require templates/<jméno>.php` — klíče pole se stanou lokálními proměnnými šablony. Žádný escaping engine (na výstup pozor ručně). Šablony: `templates/tasks.php`, `templates/audit.php`.
 
 ### Ruční PSR-4 autoloader
-`autoload.php` registruje `spl_autoload_register`, který mapuje namespace prefix `App\` na adresář `src/`:
+`autoload.php` mapuje prefix `App\` → `src/`. `public/index.php` načítá **jen** `autoload.php`, zbytek se dotahuje on-demand. Nová třída musí ležet v `src/` podle namespace, jinak se nenačte.
 
-```
-App\Service\TaskService  →  src/Service/TaskService.php
-```
+## Docker
 
-**Nová třída musí ležet v `src/` podle namespace**, jinak ji nic nenačte. `public/index.php` načítá pouze `autoload.php`, vše ostatní se dotahuje on-demand.
+Dvě služby (`docker-compose.yml`), obě s bind-mountem `./:/var/www/html` (změny zdrojáků bez rebuildu):
 
-## Docker setup
+- **`app`** — `php:8.3-fpm-alpine` + `pdo_sqlite` (viz `docker/Dockerfile`), PHP-FPM :9000, ven se nepublikuje.
+- **`web`** — `nginx:1.27-alpine`, `8080:80`, statiku servíruje sám, PHP předává FastCGI na `app:9000` (`docker/nginx/default.conf`).
 
-Dvě služby v `docker-compose.yml`:
-
-- **`app`** — `php:8.3-fpm-alpine` s doinstalovaným `pdo_sqlite` (viz `docker/Dockerfile`). Běží PHP-FPM na portu 9000, ven se nepublikuje (`expose`).
-- **`web`** — `nginx:1.27-alpine`, publikuje `8080:80`, statiku servíruje sám a PHP požadavky předává FastCGI na `app:9000` (config v `docker/nginx/default.conf`).
-
-Obě služby mají bind-mount `./:/var/www/html`, takže změny zdrojáků se projeví bez rebuildu. **Pozor:** bind mount překryje vše, co Dockerfile vytvořil uvnitř `/var/www/html` (včetně adresáře `data/` a jeho práv) — proto musí adresář `data/` existovat a být zapisovatelný pro `www-data` na straně, která mount poskytuje.
+**Gotcha s bind mountem:** mount překryje vše, co Dockerfile vytvořil uvnitř `/var/www/html`, včetně `data/` a jeho práv. Proto `data/` musí existovat a být zapisovatelný pro `www-data` (uid 82) **na hostitelské straně** mountu. DB soubor je gitignorovaný, generuje se za běhu.
 
 ## Příkazy
 
 ```bash
-# Start (poprvé / po změně Dockerfile)
-docker compose up -d --build
-# příště stačí
-docker compose up -d
+docker compose up -d --build      # poprvé / po změně Dockerfile
+docker compose up -d              # dále
 docker compose down
 
-# Aplikace běží na http://localhost:8080
-
-# Lint všech PHP souborů (přeskočí generovanou DB)
-find . -name "*.php" -not -path "./data/*" -exec php -l {} \;
-# Lint jednoho souboru
-php -l src/Service/TaskService.php
+# PHP je jen v kontejneru — lint běží uvnitř:
+docker compose exec -T app find . -name "*.php" -not -path "./data/*" -exec php -l {} \;
+docker compose exec -T app php -l src/Service/TaskService.php
 ```
+
+Aplikace: http://localhost:8080
 
 ## Stav testů
 
-Testovací framework zatím **není**. Metoda `TaskService::progress()` (spočítá procento hotových úkolů) je kandidát na první testy a `/review` v dílu 02 tutoriálu.
+Testovací framework zatím **není**. `TaskService::progress()` (procento hotových úkolů, ošetřuje dělení nulou) je určený kandidát na první unit testy a `/review` v dílu 02 tutoriálu.
